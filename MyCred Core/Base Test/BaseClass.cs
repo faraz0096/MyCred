@@ -28,12 +28,20 @@ namespace MyCred_Core.Base_Test
         protected string ActDeacAddons => _config.GetConfigValue("ActivateDeactivateAddons");
         protected string LeftHooksWidget => _config.GetConfigValue("LefSideHooksWidget");
         protected string ActionBtnPointsLoggin => _config.GetConfigValue("ActBtnPntLogin");
+        protected string ActionBtnPointsRegis => _config.GetConfigValue("ActionBtnRegistration");
         protected string PointsLogginInput => _config.GetConfigValue("PntsForLogginInput");
+        protected string PointsRegisInput => _config.GetConfigValue("PntsForRegisInput");
         protected string SaveBtnLoggingHook => _config.GetConfigValue("SaveBtnPntsLogging");
+        protected string SaveBtnRegisterHook => _config.GetConfigValue("SaveBtnPntsRegister");
         protected string RightSideWidget => _config.GetConfigValue("RightSideHooksWidget");
         protected string LimitLoggin => _config.GetConfigValue("HooksLogginLimit");
         protected string PntsRewardNotif => _config.GetConfigValue("NotificationPointsReward");
         protected string GetUserPnts => _config.GetConfigValue("GetWordPressUserPoints");
+        protected string ActionBtnPntsDailyVisit => _config.GetConfigValue("ActBtnPntDailyVisit");
+        protected string PointsDailyInput => _config.GetConfigValue("pntsForDailyInput");
+        protected string SaveBtnDailyVisit => _config.GetConfigValue("SaveBtnDailyVisit");
+        protected string RemoveITems => _config.GetConfigValue("RemoveItemsComboBox");
+     
 
         [OneTimeSetUp]
 
