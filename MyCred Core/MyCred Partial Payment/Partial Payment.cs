@@ -15,6 +15,8 @@ namespace MyCred_Core.MyCred_Partial_Payment
         private double exchangeRate = 0;
         private int min = 0;
         private int max = 0;
+        private double MaxCouponPercentage = 0;
+        private double actualAmountProduct = 0;
 
 
         [Test, Order(1)]
@@ -130,6 +132,7 @@ namespace MyCred_Core.MyCred_Partial_Payment
             await _page.Locator("(//a[normalize-space()='Shop'])[1]").ClickAsync();
             await _page.Locator("(//a[@aria-label='Add to cart: “Album”'])[1]").WaitForAsync();
             await _page.Locator("(//a[@aria-label='Add to cart: “Album”'])[1]").ClickAsync();
+            await Task.Delay(2000);
             await _page.Locator("(//a[normalize-space()='Cart'])[1]").WaitForAsync();
             await _page.Locator("(//a[normalize-space()='Cart'])[1]").ClickAsync();
 
@@ -142,16 +145,20 @@ namespace MyCred_Core.MyCred_Partial_Payment
             var getTotalAmount = await _page.Locator(".wc-block-formatted-money-amount.wc-block-components-formatted-money-amount.wc-block-components-totals-item__value").TextContentAsync();
             var removeSymbols = getTotalAmount.Substring(1);
             var actualAmount = double.Parse(removeSymbols);
+            //Re-Aassign to Global var
+            actualAmountProduct = actualAmount;
             await _page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 
             //Get point type min and max 
+            await _page.WaitForSelectorAsync("div[id='mycred-partial-payment-total'] h4");
+            await Task.Delay(3000);
             var maximumPercentage = await _page.Locator("div[id='mycred-partial-payment-total'] h4").TextContentAsync();
             var parts = maximumPercentage.Split(" ");
             var minAmount = parts[4]; // "1.00"
             var maxAmount = parts[8]; // "20.00"
 
             var convertMin = double.Parse(minAmount);
-            var convertMax = double.Parse(maxAmount);   
+            var convertMax = double.Parse(maxAmount);
             Console.WriteLine($"Minimum: {convertMin}, Maximum: {convertMax}");
 
             //Verify the min point type is equal to minimum which is apply from backend
@@ -159,9 +166,10 @@ namespace MyCred_Core.MyCred_Partial_Payment
 
             var calcMaxPercentage = (actualAmount * max) / 100;
 
+            MaxCouponPercentage = calcMaxPercentage;
 
             //Verify the max % point type is equal to maximum which is apply from backend
-            Assert.That(calcMaxPercentage, Is.EqualTo(convertMax), "Minimum is incorrect");
+            Assert.That(calcMaxPercentage, Is.EqualTo(convertMax), "Maximum is incorrect");
 
             var getUserBalance = await _page.Locator("div[class='wc-block-components-order-meta css-0 e19lxcc00'] div:nth-child(1) div:nth-child(2) span:nth-child(2)").TextContentAsync();
             var convertUserBalance = double.Parse(getUserBalance);
@@ -199,17 +207,107 @@ namespace MyCred_Core.MyCred_Partial_Payment
                     Console.WriteLine("Coupon applied successfully");
                 }
 
-                Console.WriteLine(convertCoupons);
+               
             }
             else
             {
                 Console.WriteLine("User Balance is less: " + convertUserBalance);
             }
 
-           
+        }
 
-            Console.WriteLine(actualAmount);
-           
+
+        [Test, Order(4)]
+        public async Task RemoveCoupon()
+        {
+            //Verify the error message when enter amount greater than maximum
+            await _page.Locator("button[class='wc-block-components-chip__remove']").ClickAsync();
+            await _page.ReloadAsync();
+            await Task.Delay(2000);
+       
+            double incrementMaxCoupon = MaxCouponPercentage;
+            incrementMaxCoupon++;
+            string convertString = incrementMaxCoupon.ToString();
+            await _page.WaitForSelectorAsync("select[id='point-type-select']");
+            await _page.Locator("select[id='point-type-select']").SelectOptionAsync("mycred_default");
+            await _page.Locator("input[class='mycred-partial-payment-inpt']").ClearAsync();
+
+            await _page.Locator("input[class='mycred-partial-payment-inpt']").FillAsync(convertString);
+            await _page.Locator("div[class='wc-block-components-order-meta css-0 e19lxcc00'] div:nth-child(1) div:nth-child(2) span:nth-child(2)").ClickAsync();
+            await _page.Locator("input[value='Apply Discount']").WaitForAsync();
+
+            await _page.Locator("input[value='Apply Discount']").ClickAsync();
+
+            var getError =  await _page.Locator("//div[@class='wc-block-components-notice-banner__content']//div[contains(text(),'The amount can not be greater than the maximum amo')]").TextContentAsync();
+
+            Assert.That(getError, Is.EqualTo("The amount can not be greater than the maximum amount."));
+
+            Console.WriteLine(getError);
+            await Task.Delay(2000);
+
+        }
+
+        [Test, Order(4)]
+
+        public async Task MultipleCoupons()
+        {
+            await _page.ReloadAsync();
+            await _page.Locator("select[id='point-type-select']").SelectOptionAsync("mycred_default");
+            await _page.Locator("input[class='mycred-partial-payment-inpt']").ClearAsync();
+            double actualMulti = actualAmountProduct;
+            //Half to actual amount apply for multiple coupons
+
+            double change = (actualMulti * 50) / 100;
+            var changeToString = change.ToString();
+            await Task.Delay(3000);
+            var maximumPercentage = await _page.Locator("div[id='mycred-partial-payment-total'] h4").TextContentAsync();
+            var parts = maximumPercentage.Split(" ");
+            var minAmount = parts[4]; // "1.00"
+            var maxAmount = parts[8]; // "20.00"
+
+            var convertMin = double.Parse(minAmount);
+            var convertMax = double.Parse(maxAmount);
+            var calcMaxPercentage = (actualMulti * max) / 100;
+
+            Console.WriteLine("Initial Maximum percentage: " + calcMaxPercentage);
+
+            await _page.Locator("input[class='mycred-partial-payment-inpt']").FillAsync(changeToString);
+            await _page.Locator("div[class='wc-block-components-order-meta css-0 e19lxcc00'] div:nth-child(1) div:nth-child(2) span:nth-child(2)").ClickAsync();
+            await _page.Locator("input[value='Apply Discount']").WaitForAsync();
+
+            await _page.Locator("input[value='Apply Discount']").ClickAsync();
+            await Task.Delay(8000);
+            await _page.WaitForSelectorAsync("select[id='point-type-select']");
+            await _page.Locator("select[id='point-type-select']").SelectOptionAsync("mycred_default");
+            await _page.WaitForSelectorAsync("div[id='mycred-partial-payment-total'] h4");
+            var maximumPercentageMulti = await _page.Locator("div[id='mycred-partial-payment-total'] h4").TextContentAsync();
+            var partsMulti = maximumPercentageMulti.Split(" ");
+            var minAmountMulti = partsMulti[4]; // "1.00"
+            var maxAmountMulti = partsMulti[8]; // "20.00"
+            var convertMinMulti = double.Parse(minAmountMulti);
+            var convertMaxMulti = double.Parse(maxAmountMulti);
+            Console.WriteLine("Remaining Maximum percentage: " + convertMaxMulti);
+
+            string sendMaxToInput = convertMaxMulti.ToString();
+            await _page.Locator("input[class='mycred-partial-payment-inpt']").ClearAsync();
+            await _page.Locator("input[class='mycred-partial-payment-inpt']").FillAsync(sendMaxToInput);
+            await _page.Locator("div[class='wc-block-components-order-meta css-0 e19lxcc00'] div:nth-child(1) div:nth-child(2) span:nth-child(2)").ClickAsync();
+            await _page.Locator("input[value='Apply Discount']").WaitForAsync();
+
+            await Task.Delay(1000);
+            await _page.Locator("input[value='Apply Discount']").ClickAsync();
+            var regex = new Regex(@"\d+(\.\d+)?");
+            var totalAmount = await _page.Locator(".wc-block-formatted-money-amount.wc-block-components-formatted-money-amount.wc-block-components-totals-footer-item-tax-value").TextContentAsync();
+            var matchTotal = regex.Match(totalAmount);
+            var totalAmountBefore = matchTotal.ToString();
+            var convertTotalAmount = double.Parse(totalAmountBefore);
+
+            if (convertTotalAmount == 0)
+            {
+                Console.WriteLine("Multiple Coupons applied successfully");
+            }
+
+
         }
     }
 }
